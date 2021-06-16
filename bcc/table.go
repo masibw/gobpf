@@ -93,13 +93,16 @@ func (table *Table) KeyStrToBytes(keyStr string) ([]byte, error) {
 	mod := table.module.p
 
 	keySize := C.bpf_table_key_size_id(mod, table.id)
+	fmt.Println(keySize)
 	key := make([]byte, keySize)
 	keyP := unsafe.Pointer(&key[0])
 
 	keyCS := C.CString(keyStr)
+	fmt.Println(keyCS)
 	defer C.free(unsafe.Pointer(keyCS))
 
 	r := C.bpf_table_key_sscanf(mod, table.id, keyCS, keyP)
+	fmt.Println(r)
 	if r != 0 {
 		return nil, fmt.Errorf("error scanning key (%v) from string", keyStr)
 	}

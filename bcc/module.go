@@ -497,14 +497,21 @@ func (bpf *Module) TableId(name string) C.size_t {
 }
 
 // CreateMap creates a new Map.
+// You can use this method likes this.
+// bpf.NewTable(m.CreateMap(bpf.BPF_MAP_TYPE_ARRAY, "map_name", int(unsafe.Sizeof(key)),int(unsafe.Sizeof(leaf2)), 10, 0), m)
 func (bpf *Module) CreateMap(mapType BPF_MAP_TYPE, name string,
-	keySize int, valueSize int, maxEntries int,
+	keySize, valueSize , maxEntries ,
 	mapFlags int) C.size_t {
-
 	namep := unsafe.Pointer(C.CString(name))
 	defer C.free(namep)
+	fmt.Println(namep)
+	// fd が返ってくるがどう扱うかも考えないと駄目そう
+	fd := C.bcc_create_map(uint32(mapType), (*C.char)(namep), C.int(keySize), C.int(valueSize), C.int(maxEntries), C.int(mapFlags))
+	fmt.Println("fd: ",fd)
+	nameCS := C.CString(name)
+	defer C.free(unsafe.Pointer(nameCS))
 
-	return C.bcc_create_map(C.int(mapType), (*C.char)(namep), C.int(keySize), C.int(valueSize), C.int(maxEntries), C.int(mapFlags))
+	return C.bpf_table_id(bpf.p, nameCS)
 }
 
 // TableDesc returns a map with table properties (name, fd, ...).

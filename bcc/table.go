@@ -198,6 +198,17 @@ func (table *Table) GetP(key unsafe.Pointer) (unsafe.Pointer, error) {
 	return leafP, nil
 }
 
+func GetPByFd(fd, size int, key unsafe.Pointer)(unsafe.Pointer, error){
+	leaf := make([]byte, 8)
+	leafP := unsafe.Pointer(&leaf[0])
+
+	_, err := C.bpf_lookup_elem(C.int(fd), key, leafP)
+	if err != nil {
+		return nil, err
+	}
+	return leafP, nil
+}
+
 // Set a key to a value.
 func (table *Table) Set(key, leaf []byte) error {
 	fd := C.bpf_table_fd_id(table.module.p, table.id)
@@ -222,6 +233,27 @@ func (table *Table) Set(key, leaf []byte) error {
 	return nil
 }
 
+func SetByFd(fd int, key, leaf []byte) error {
+	keyP := unsafe.Pointer(&key[0])
+	leafP := unsafe.Pointer(&leaf[0])
+
+	_, _ = C.bpf_update_elem(C.int(fd), keyP, leafP, 0)
+	// if r != 0 {
+	// 	keyStr, errK := table.KeyBytesToStr(key)
+	// 	if errK != nil {
+	// 		keyStr = fmt.Sprintf("%v", key)
+	// 	}
+	// 	leafStr, errL := table.LeafBytesToStr(leaf)
+	// 	if errL != nil {
+	// 		leafStr = fmt.Sprintf("%v", leaf)
+	// 	}
+
+	// 	return fmt.Errorf("Table.Set: update %v to %v: %v", keyStr, leafStr, err)
+	// }
+
+	return nil
+}
+
 // SetP a key to a value as unsafe.Pointer.
 func (table *Table) SetP(key, leaf unsafe.Pointer) error {
 	fd := C.bpf_table_fd_id(table.module.p, table.id)
@@ -234,14 +266,22 @@ func (table *Table) SetP(key, leaf unsafe.Pointer) error {
 	return nil
 }
 
+func SetPByFd(fd int, key, leaf unsafe.Pointer) error {
+	_, err := C.bpf_update_elem(C.int(fd), key, leaf, 0)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // SetMap sets a key to values for BPF_HASH_OF_MAPS and BPF_ARRAY_OF_MAPS.
 func (table *Table) SetMap(key unsafe.Pointer, innerMapFd int) error {
 	fd := C.bpf_table_fd_id(table.module.p, table.id)
 
-	leaf := make([]byte, 8)
-	GetHostByteOrder().PutUint64(leaf, uint64(innerMapFd))
+	leaf := make([]byte, 4)
+	GetHostByteOrder().PutUint32(leaf, uint32(innerMapFd))
 	leafP := unsafe.Pointer(&leaf[0])
-
 	_, err := C.bpf_update_elem(fd, key, leafP, 0)
 	if err != nil {
 		return err

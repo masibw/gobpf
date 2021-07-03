@@ -16,6 +16,7 @@ package bcc
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"runtime"
 	"strings"
@@ -99,7 +100,8 @@ func newModule(code string, cflags []string) *Module {
 	if c == nil {
 		return nil
 	}
-	return &Module{
+
+	m := &Module{
 		p:              c,
 		funcs:          make(map[string]int),
 		kprobes:        make(map[string]int),
@@ -107,6 +109,45 @@ func newModule(code string, cflags []string) *Module {
 		tracepoints:    make(map[string]int),
 		rawTracepoints: make(map[string]int),
 		perfEvents:     make(map[string][]int),
+	}
+	// If any "kprobe__" or "tracepoint__" or "raw_tracepoint__"
+	// prefixed functions were defined,
+	// they will be loaded and attached here.
+	m.traceAutoload()
+	return m
+}
+
+func (m *Module) traceAutoload() {
+	for i := 0; i < int(C.bpf_num_functions(m.p)); i++ {
+		funcName := C.GoString(C.bpf_function_name(m.p, C.ulong(i)))
+		//if strings.HasPrefix(funcName, "kprobe__"){
+		//	fn, err := m.LoadKprobe(funcName)
+		//	if err != nil {
+		//		fmt.Println(err)
+		//		os.Exit(1)
+		//		return
+		//	}
+		//	m.AttachKprobe(GetSyscallFnName(funcName[8:]),fn,-1)
+		//}else if strings.HasPrefix(funcName, "kretprobe__"){
+		//	fn, err := m.LoadKprobe(funcName)
+		//	if err != nil {
+		//		fmt.Println(err)
+		//		os.Exit(1)
+		//		return
+		//	}
+		//	m.AttachKretprobe(GetSyscallFnName(funcName[11:]),fn,-1)
+		//}
+		if strings.HasPrefix(funcName, "tracepoint__") {
+			fn, err := m.LoadTracepoint(funcName)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+				return
+			}
+			m.AttachTracepoint(strings.Replace(funcName[len("tracepoint__"):], "__", ":", 1), fn)
+		}
+
+		//TODO deal with other types...
 	}
 }
 

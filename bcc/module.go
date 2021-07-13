@@ -66,6 +66,35 @@ const (
 	XDP_FLAGS_MASK  = XDP_FLAGS_UPDATE_IF_NOEXIST | XDP_FLAGS_MODES
 )
 
+type BPF_MAP_TYPE int
+
+const (
+	BPF_MAP_TYPE_UNSPEC BPF_MAP_TYPE = iota
+	BPF_MAP_TYPE_HASH
+	BPF_MAP_TYPE_ARRAY
+	BPF_MAP_TYPE_PROG_ARRAY
+	BPF_MAP_TYPE_PERF_EVENT_ARRAY
+	BPF_MAP_TYPE_PERCPU_HASH
+	BPF_MAP_TYPE_PERCPU_ARRAY
+	BPF_MAP_TYPE_STACK_TRACE
+	BPF_MAP_TYPE_CGROUP_ARRAY
+	BPF_MAP_TYPE_LRU_HASH
+	BPF_MAP_TYPE_LRU_PERCPU_HASH
+	BPF_MAP_TYPE_LPM_TRIE
+	BPF_MAP_TYPE_ARRAY_OF_MAPS
+	BPF_MAP_TYPE_HASH_OF_MAPS
+	BPF_MAP_TYPE_DEVMAP
+	BPF_MAP_TYPE_SOCKMAP
+	BPF_MAP_TYPE_CPUMAP
+	BPF_MAP_TYPE_XSKMAP
+	BPF_MAP_TYPE_SOCKHASH
+	BPF_MAP_TYPE_CGROUP_STORAGE
+	BPF_MAP_TYPE_REUSEPORT_SOCKARRAY
+	BPF_MAP_TYPE_PERCPU_CGROUP_STORAGE
+	BPF_MAP_TYPE_QUEUE
+	BPF_MAP_TYPE_STACK
+)
+
 var (
 	defaultCflags []string
 	compileCh     chan compileRequest
@@ -506,6 +535,18 @@ func (bpf *Module) TableId(name string) C.size_t {
 	cs := C.CString(name)
 	defer C.free(unsafe.Pointer(cs))
 	return C.bpf_table_id(bpf.p, cs)
+}
+
+// CreateMap creates a new Map.
+// You can use this method like this.
+// m.CreateMap(bpf.BPF_MAP_TYPE_HASH, "inner2", int(unsafe.Sizeof(key)), 16, 10, 1)
+func (bpf *Module) CreateMap(mapType BPF_MAP_TYPE, name string,
+	keySize, valueSize , maxEntries ,
+	mapFlags int) int {
+	namep := unsafe.Pointer(C.CString(name))
+	defer C.free(namep)
+
+	return int(C.bcc_create_map(uint32(mapType), (*C.char)(namep), C.int(keySize), C.int(valueSize), C.int(maxEntries), C.int(mapFlags)))
 }
 
 // TableDesc returns a map with table properties (name, fd, ...).
